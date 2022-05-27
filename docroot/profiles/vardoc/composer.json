@@ -1,0 +1,162 @@
+{
+  "name": "vardot/vardoc",
+  "description": "Vardoc: Knowledge Base System and Documentation Site",
+  "type": "drupal-profile",
+  "license": "GPL-2.0-or-later",
+  "minimum-stability": "dev",
+  "prefer-stable": true,
+  "authors": [
+    {
+      "name": "Vardot",
+      "homepage": "https://www.drupal.org/vardot",
+      "role": "Maintainer"
+    }
+  ],
+  "support": {
+    "issues": "http://drupal.org/project/issues/vardoc",
+    "source": "http://cgit.drupalcode.org/vardoc"
+  },
+  "repositories": {
+    "drupal": {
+      "type": "composer",
+      "url": "https://packages.drupal.org/8"
+    },
+    "assets": {
+      "type": "composer",
+      "url": "https://asset-packagist.org"
+    },
+    "drupal-ckeditor-plugins": {
+      "type": "composer",
+      "url": "https://panopoly.gitlab.io/drupal-ckeditor-plugins"
+    }
+  },
+  "require": {
+    "composer/installers": "~1.0 || ~2.0",
+    "oomphinc/composer-installers-extender": "~1.0 || ~2.0",
+    "cweagans/composer-patches": "~1.0",
+    "drupal/core-composer-scaffold": "^9",
+    "drupal/core": "~9.0",
+    "vardot/varbase": "~9.0",
+    "drupal/varbase_faqs": "~9.0",
+    "drupal/fontawesome": "~2.0",
+    "drupal/better_normalizers": "~1.0",
+    "drupal/votingapi": "~3.0",
+    "drupal/votingapi_widgets": "~1.0",
+    "drupal/flag": "~4.0",
+    "drupal/sharethis": "~2.0",
+    "drupal/menu_link_attributes": "~1.0",
+    "drupal/svg_image": "~1.0",
+    "drupal/search_api_autocomplete": "~1.0",
+    "drupal/r4032login": "~2.0",
+    "drupal/group": "~1.0",
+    "drupal/group_outsider_in": "~1.0",
+    "drupal/group_content_menu": "~1.0",
+    "drupal/group_members_extra": "~1.0",
+    "drupal/ginvite": "~2.0",
+    "drupal/grequest": "~1.0",
+    "drupal/group_notify": "~1.0",
+    "drupal/group_taxonomy": "~1.0",
+    "drupal/entitygroupfield": "~1.0",
+    "npm-asset/jquery-bar-rating": "~1.0"
+  },
+  "require-dev": {
+    "drupal/core-dev": "~9.0",
+    "drush/drush": "~10.0",
+    "drupal/drupal-extension": "~4.0",
+    "emuse/behat-html-formatter": "^0.2.0"
+  },
+  "config": {
+    "bin-dir": "bin/",
+    "secure-http": false,
+    "preferred-install": {
+      "drupal/core": "dist"
+    }
+  },
+  "autoload": {
+    "psr-4": {
+      "Vardoc\\composer\\": "src/composer"
+    }
+  },
+  "scripts": {
+    "pre-install-cmd": ["Varbase\\composer\\ScriptHandler::checkComposerVersion"],
+    "pre-update-cmd": ["Varbase\\composer\\ScriptHandler::checkComposerVersion"],
+    "post-install-cmd": [
+      "Varbase\\composer\\ScriptHandler::createRequiredFiles",
+      "Varbase\\composer\\ScriptHandler::removeGitDirectories"
+    ],
+    "post-update-cmd": [
+      "Varbase\\composer\\ScriptHandler::createRequiredFiles",
+      "Varbase\\composer\\ScriptHandler::removeGitDirectories"
+    ],
+    "post-drupal-scaffold-cmd": [
+      "Varbase\\composer\\ScriptHandler::postDrupalScaffoldProcedure",
+      "Vardoc\\composer\\ScriptHandler::postDrupalScaffoldSubProfileProcedure"
+    ]
+  },
+  "extra": {
+    "drupal-scaffold": {
+      "locations": {
+        "web-root": "docroot/"
+      }
+    },
+    "branch-alias": {
+      "dev-5.0.x": "5.0.x-dev",
+      "dev-9.0.x": "9.0.x-dev"
+    },
+    "installer-types": [
+      "bower-asset",
+      "npm-asset"
+    ],
+    "installer-paths": {
+      "docroot/core": ["type:drupal-core"],
+      "docroot/profiles/{$name}": ["type:drupal-profile"],
+      "docroot/modules/contrib/{$name}": ["type:drupal-module"],
+      "docroot/themes/contrib/{$name}": ["type:drupal-theme"],
+      "docroot/libraries/slick": ["npm-asset/slick-carousel"],
+      "docroot/libraries/ace": ["npm-asset/ace-builds"],
+      "docroot/libraries/jquery-ui-touch-punch": ["bower-asset/jqueryui-touch-punch"],
+      "docroot/libraries/jquery-bar-rating": ["npm-asset/jquery-bar-rating"],
+      "docroot/libraries/{$name}": [
+        "type:drupal-library",
+        "type:bower-asset",
+        "type:npm-asset"
+      ],
+      "docroot/modules/custom/{$name}": ["type:drupal-custom-module"],
+      "docroot/themes/custom/{$name}": ["type:drupal-custom-theme"],
+      "drush/contrib/{$name}": ["type:drupal-drush"]
+    },
+    "drupal-libraries": {
+      "library-directory": "docroot/libraries",
+      "libraries": [
+        {"name": "objectfitpolyfill", "package": "bower-asset/objectfitpolyfill"},
+        {"name": "chartjs", "package": "bower-asset/chartjs"},
+        {"name": "c3","package": "bower-asset/c3"},
+        {"name": "d3", "package": "bower-asset/d3"},
+        {"name": "dropzone","package": "npm-asset/dropzone"},
+        {"name": "blazy", "package": "npm-asset/blazy"},
+        {"name": "slick", "package": "npm-asset/slick-carousel"},
+        {"name": "ace", "package": "npm-asset/ace-builds"},
+        {"name": "jquery-ui-touch-punch", "package": "bower-asset/jqueryui-touch-punch"},
+        {"name": "imagesloaded", "package": "npm-asset/imagesloaded"},
+        {"name": "swagger-ui", "package": "swagger-api/swagger-ui"},
+        {"name": "fakeobjects", "package": "drupal-ckeditor-plugin/fakeobjects"},
+        {"name": "jquery-bar-rating", "package": "npm-asset/jquery-bar-rating"}
+      ]
+    },
+    "enable-patching": true,
+    "composer-exit-on-patch-failure": true,
+    "patchLevel": {
+      "drupal/core": "-p2"
+    },
+    "patches": {
+      "drupal/core": {
+        "Issue #1356276: Allow profiles to define a base/parent profile":
+        "https://www.drupal.org/files/issues/2021-05-25/3143958-15-subprofile-support-9.1.x.patch"
+      },
+      "drupal/group": {
+        "Issue #3161194: The '' entity type does not exist":
+        "https://www.drupal.org/files/issues/2021-04-08/3161194_the_entity_type_does_not_exist_17_2.patch"
+      }
+    }
+  }
+}

@@ -1,0 +1,24 @@
+langcode: en
+status: true
+dependencies:
+  config:
+    - group.type.ou
+    - node.type.announcement
+  module:
+    - gnode
+    - node
+id: ou-group_node-announcement
+label: 'Organizational Unit: Group node (Announcement)'
+description: 'Adds <em class="placeholder">Announcement</em> content to groups both publicly and privately.'
+group_type: ou
+content_plugin: 'group_node:announcement'
+plugin_config:
+  group_cardinality: 0
+  entity_cardinality: 1
+  use_creation_wizard: true
+  notify: 0
+  notify_mode: enforce
+  notify_who: all
+  notify_subject_insert: 'New group content: [node:title]'
+  notify_subject_update: 'Group content update: [node:title]'
+  comments: 0

@@ -1,0 +1,8 @@
+services:
+  group_permission.checker.outsider_in:
+    public: false
+    class: 'Drupal\group_outsider_in\Access\GroupPermissionChecker'
+    decorates: group_permission.checker
+    arguments:
+      - '@group_permission.checker.outsider_in.inner'
+      - '@group_permission.chain_calculator'

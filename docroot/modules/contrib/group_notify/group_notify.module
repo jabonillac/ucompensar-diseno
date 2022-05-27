@@ -1,0 +1,413 @@
+<?php
+
+/**
+ * @file
+ * Hook implementations and other procedural code for the group_notify module.
+ */
+
+use Drupal\Core\Entity\EntityInterface;
+use Drupal\Core\Routing\RouteMatchInterface;
+use Drupal\Core\Form\FormStateInterface;
+use Drupal\node\NodeInterface;
+use Drupal\group\Entity\GroupContentType;
+use Drupal\group\Entity\GroupContentInterface;
+use Drupal\group\Entity\GroupContent;
+
+/**
+ * Implements hook_help().
+ */
+function group_notify_help($route_name, RouteMatchInterface $route_match) {
+  if ($route_name === 'help.page.group_notify') {
+    $readme_file = file_exists(__DIR__ . '/README.md') ? __DIR__ . '/README.md' : __DIR__ . '/README.txt';
+    if (!file_exists($readme_file)) {
+      return NULL;
+    }
+    $text = file_get_contents($readme_file);
+    if ($text && !\Drupal::moduleHandler()->moduleExists('markdown')) {
+      return '<pre>' . $text . '</pre>';
+    }
+    else {
+      // Use the Markdown filter to render the README.
+      $filter_manager = \Drupal::service('plugin.manager.filter');
+      $settings = \Drupal::configFactory()->get('markdown.settings')->getRawData();
+      $config = ['settings' => $settings];
+      $filter = $filter_manager->createInstance('markdown', $config);
+      return $filter->process($text, 'en');
+    }
+  }
+  return NULL;
+}
+
+/**
+ * Implements hook_theme().
+ */
+function group_notify_theme($existing, $type, $theme, $path) {
+  return [
+    'node__group_notify_email' => [
+      'base hook' => 'node',
+    ],
+    'comment__group_notify_email' => [
+      'base hook' => 'comment',
+    ],
+  ];
+}
+
+/**
+ * Implements hook_mail().
+ */
+function group_notify_mail($key, &$message, $params) {
+  $message['headers']['Content-Type'] = 'text/html; charset=UTF-8;';
+  $message['from'] = \Drupal::config('system.site')->get('mail');
+
+  switch ($key) {
+    case 'group_post':
+      $message['subject'] = $params['subject'];
+      break;
+
+    case 'comment':
+      $message['subject'] = t('New comment on @post', ['@post' => $params['post']]);
+      break;
+  }
+
+  $message['body'][] = $params['content'];
+}
+
+/**
+ * Implements hook_group_content_info_alter().
+ */
+function group_notify_group_content_info_alter(array &$definitions) {
+  foreach ($definitions as $plugin => &$config) {
+    // Use our class for all group_node plugins.
+    if (strstr($plugin, 'group_node')) {
+      $config['class'] = '\Drupal\group_notify\Plugin\NotifyGroupNode';
+    }
+  }
+}
+
+/**
+ * Implements hook_entity_extra_field_info().
+ *
+ * Iterates through all the Group content enabler plugins to find node types
+ * with gnode plugin configured for group_notify, and adds the info about the
+ * notification checkboxes to the entity form to be managed properly.
+ */
+function group_notify_entity_extra_field_info() {
+  $extra = [];
+  // The default info about the form element.
+  $group_notify_element = [
+    'label' => t('Group notify checkboxes'),
+    'description' => t('Conditionally send notification to group members when content is added or updated.'),
+    'weight' => 100,
+  ];
+  // There's no simple way to get fully loaded plugins for all content types
+  // across all group types. So we have to load all the group type entities,
+  // then iterate over those to check all the configured plugins for each type.
+  /** @var \Drupal\group\Entity\GroupTypeInterface $group_type */
+  foreach (\Drupal::entityTypeManager()->getStorage('group_type')->loadMultiple() as $group_type) {
+    // This will load fully configured plugin instances for a given group type.
+    foreach (\Drupal::service('plugin.manager.group_content_enabler')->getInstalled($group_type) as $plugin_id => $plugin) {
+      if ($plugin->getBaseId() !== 'group_node' || !$plugin->isNotifyEnabled()) {
+        continue;
+      }
+      $bundle = $plugin->getEntityBundle();
+      // Since we only support gnode plugins, getEntityBundle() should never
+      // return FALSE, but let's be safe in case something else changes.
+      if (!empty($bundle) && empty($extra['node'][$bundle]['form']['group_notify'])) {
+        $extra['node'][$bundle]['form']['group_notify'] = $group_notify_element;
+      }
+    }
+  }
+  return $extra;
+}
+
+/**
+ * Implements hook_form_BASE_FORM_ID_alter().
+ */
+function group_notify_form_node_form_alter(array &$form, FormStateInterface $form_state, $form_id) {
+  // Node edit form.
+  if (preg_match('/^node_\w+_edit_form$/', $form_id)) {
+    $groups = [];
+
+    $group_content = \Drupal::entityTypeManager()
+      ->getStorage('group_content')
+      ->loadByProperties(
+        ['entity_id' => $form_state->getFormObject()->getEntity()->id()]
+      );
+
+    foreach ($group_content as $content) {
+      $plugin = $content->getContentPlugin();
+
+      if ($plugin->getBaseId() !== 'group_node' || !$plugin->isNotifyEnabled()) {
+        continue;
+      }
+
+      $groups[$content->id()] = $content->getGroup()->label();
+    }
+
+    if (!empty($groups)) {
+      $form['actions']['submit']['#submit'][] = 'group_notify_edit_form_submit';
+      $form['group_notify'] = [
+        '#type' => 'checkboxes',
+        '#options' => $groups,
+        '#title' => t('Send notification'),
+      ];
+    }
+  }
+
+  // Group content add form.
+  if ($form_state
+    ->has('group_wizard') && $form_state
+    ->get('group_wizard_id') == 'group_entity' && $form_state
+    ->has('group_content_enabler')) {
+
+    $plugin_id = $form_state->get('group_content_enabler');
+    $group_content_type = GroupContentType::loadByContentPluginId($plugin_id);
+
+    if (empty($group_content_type)) {
+      return;
+    }
+
+    $plugin = reset($group_content_type)->getContentPlugin();
+
+    if ($plugin->isNotifyEnabled() && $plugin->isNotifyToggled()) {
+      $form['actions']['submit']['#submit'][] = 'group_notify_form_submit';
+      $form['group_notify'] = [
+        '#type' => 'checkbox',
+        '#default_value' => 1,
+        '#title' => t('Send notification'),
+      ];
+    }
+  }
+}
+
+/**
+ * Node edit form submit handler.
+ *
+ * Send notification on node update.
+ *
+ * @see group_notify_form_node_form_alter()
+ */
+function group_notify_edit_form_submit(array $form, FormStateInterface $form_state) {
+  $group_content = GroupContent::loadMultiple($form_state->getValue('group_notify'));
+  foreach ($group_content as $content) {
+    group_notify_notify($content, TRUE);
+  }
+}
+
+/**
+ * Group content form submit handler.
+ *
+ * Determines whether or not to send a notification in toggle mode.
+ *
+ * @see group_notify_form_node_form_alter()
+ */
+function group_notify_form_submit(array $form, FormStateInterface $form_state) {
+  if ($form_state->getValue('group_notify')) {
+    $group_content = $form_state
+      ->get('group')
+      ->getContentByEntityId($form_state
+        ->get('group_content_enabler'), $form_state
+        ->getFormObject()
+        ->getEntity()
+        ->id());
+    if ($group_content = reset($group_content)) {
+      group_notify_notify($group_content);
+    }
+  }
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_insert() for 'Node' entities.
+ *
+ * Since group_notify only works with Node entities, to programatically notice
+ * whenever an entity we care about has been inserted, this is all we need.
+ *
+ * @see _group_notify_node_change()
+ */
+function group_notify_node_insert(NodeInterface $node) {
+  _group_notify_node_change($node, 'insert');
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_update() for 'Node' entities.
+ *
+ * Since group_notify only works with Node entities, to programatically notice
+ * whenever an entity we care about has been edited, this is all we need.
+ *
+ * @see _group_notify_node_change()
+ */
+function group_notify_node_update(NodeInterface $node) {
+  _group_notify_node_change($node, 'update');
+}
+
+/**
+ * Sends conditional notifications when a Node is inserted or updated.
+ *
+ * Checks for the 'group_notify_group_ids' array and the 'group_notify_all'
+ * boolean on new or updated Node entities. If either property is set, load the
+ * corresponding GroupContent entities and trigger the appropriate group
+ * notifications.
+ *
+ * @param \Drupal\node\NodeInterface $node
+ *   The Node entity.
+ * @param string $operation
+ *   The entity operation we're dealing with, either 'update' or 'insert'.
+ */
+function _group_notify_node_change(NodeInterface $node, $operation) {
+  $group_contents = [];
+  // If the 'group_notify_all' boolean flag is set, load everything.
+  if (!empty($node->group_notify_all)) {
+    $group_contents = GroupContent::loadByEntity($node);
+  }
+  // Otherwise, load specific groups from the 'group_notify_group_ids' array.
+  elseif (!empty($node->group_notify_group_ids)) {
+    $group_contents = \Drupal::entityTypeManager()
+      ->getStorage('group_content')
+      ->loadByProperties([
+        'gid' => $node->group_notify_group_ids,
+        'entity_id' => $node->id(),
+      ]);
+  }
+  foreach ($group_contents as $group_content) {
+    $plugin = $group_content->getContentPlugin();
+    if ($plugin->getBaseId() === 'group_node' && $plugin->isNotifyEnabled()) {
+      group_notify_notify($group_content, $operation === 'update');
+    }
+  }
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_insert() for 'Group Content' entities.
+ */
+function group_notify_group_content_insert(EntityInterface $entity) {
+  $plugin = $entity->getContentPlugin();
+  if ($plugin->getBaseId() === 'group_node' && $plugin->isNotifyEnabled() && $plugin->isNotifyEnforced()) {
+    group_notify_notify($entity);
+  }
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_insert() for 'Comment' entities.
+ */
+function group_notify_comment_insert(EntityInterface $entity) {
+  $entity_manager = \Drupal::entityTypeManager();
+  $storage = $entity_manager->getStorage('group_content');
+
+  if ($group_content = $storage
+    ->getQuery()
+    ->condition('entity_id', $entity->getCommentedEntityId())
+    ->condition('type', '%group_node%', 'LIKE')
+    ->execute()) {
+
+    $gid = reset($group_content);
+    $group_content = $storage->load($gid);
+    $plugin = $group_content->getContentPlugin();
+
+    // Notifications or comments notifications are not enabled.
+    if (!$plugin->isNotifyEnabled() || !$plugin->isNotifyCommentEnabled()) {
+      return;
+    }
+
+    foreach (group_notify_process_members($group_content) as $member) {
+      if ($entity->getAuthorEmail() === $member['email']) {
+        continue;
+      }
+      $plugin->addRecipient($member);
+    }
+
+    if ($plugin->hasRecipients()) {
+      $target = $entity->getCommentedEntity();
+
+      $comment = $entity_manager
+        ->getViewBuilder($entity
+          ->getEntityTypeId())
+        ->view($entity, 'group_notify_email');
+
+      $params = [
+        'mail_key' => 'comment',
+        'post' => $target->getTitle(),
+        'content' => \Drupal::service('renderer')->renderPlain($comment),
+      ];
+
+      $plugin->sendNotification($params);
+    }
+  }
+}
+
+/**
+ * Retrieves information about all group members.
+ *
+ * @param \Drupal\group\Entity\GroupContentInterface $entity
+ *   The group content entity to retrieve members from.
+ *
+ * @return array
+ *   Nested array of information about every group member, with each subarray
+ *   including 'email' and 'langcode' keys.
+ */
+function group_notify_process_members(GroupContentInterface $entity) {
+  $members = [];
+
+  $configuration = $entity->getContentPlugin()->getConfiguration();
+
+  $target = $entity->getEntity();
+
+  foreach ($entity->getGroup()->getMembers() as $member) {
+    $user = $member->getUser();
+
+    if (!$target->access('view', $user)) {
+      continue;
+    }
+
+    if ($configuration['notify_who'] === 'role') {
+      if ($member->hasPermission('allow email notifications')) {
+        $members[] = [
+          'email' => $user->getEmail(),
+          'langcode' => $user->getPreferredLangcode(),
+        ];
+      }
+    }
+    else {
+      $members[] = [
+        'email' => $user->getEmail(),
+        'langcode' => $user->getPreferredLangcode(),
+      ];
+    }
+  }
+
+  return $members;
+}
+
+/**
+ * Prepare and send email notification.
+ *
+ * @param \Drupal\group\Entity\GroupContentInterface $entity
+ *   The group content entity to send email notifications for.
+ * @param bool $edit
+ *   Is this notification about an edit to existing content? Defaults to FALSE.
+ */
+function group_notify_notify(GroupContentInterface $entity, bool $edit = FALSE) {
+  $plugin = $entity->getContentPlugin();
+
+  foreach (group_notify_process_members($entity) as $member) {
+    if ($member['email'] !== $entity->getOwner()->getEmail()) {
+      $plugin->addRecipient($member);
+    }
+  }
+
+  if ($plugin->hasRecipients()) {
+    $target = $entity->getEntity();
+
+    $content = \Drupal::entityTypeManager()
+      ->getViewBuilder($target
+        ->getEntityTypeId())
+      ->view($target, 'group_notify_email');
+
+    $params = [
+      'mail_key' => 'group_post',
+      'subject' => $plugin->getEmailSubject($entity, $edit),
+      'content' => \Drupal::service('renderer')->renderPlain($content),
+    ];
+
+    $plugin->sendNotification($params);
+  }
+}

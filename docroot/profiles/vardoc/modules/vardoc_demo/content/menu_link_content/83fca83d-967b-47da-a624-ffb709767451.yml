@@ -1,0 +1,42 @@
+_meta:
+  version: '1.0'
+  entity_type: menu_link_content
+  uuid: 83fca83d-967b-47da-a624-ffb709767451
+  bundle: menu_link_content
+  default_langcode: en
+default:
+  revision_log_message:
+    -
+      value: 'Created new Custom menu link for the FAQs section page.'
+  enabled:
+    -
+      value: true
+  title:
+    -
+      value: FAQs
+  menu_name:
+    -
+      value: main
+  link:
+    -
+      uri: 'internal:/faqs/'
+      title: 'FAQs'
+      options:
+        attributes:
+          class:
+            - ''
+  external:
+    -
+      value: false
+  rediscover:
+    -
+      value: true
+  weight:
+    -
+      value: -47
+  expanded:
+    -
+      value: false
+  revision_translation_affected:
+    -
+      value: true

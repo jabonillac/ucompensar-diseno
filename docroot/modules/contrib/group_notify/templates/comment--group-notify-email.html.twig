@@ -1,0 +1,23 @@
+{#
+/**
+ * @file
+ * Group Notify theme implementation to display comments in an email.
+ *
+ * @see template_preprocess_comment()
+ */
+#}
+
+<article>
+  <mark class="hidden" data-comment-timestamp="{{ new_indicator_timestamp }}"></mark>
+
+  <footer>
+    <p>{{ submitted }}</p>
+    {% if parent %}
+      <p class="visually-hidden">{{ parent }}</p>
+    {% endif %}
+  </footer>
+
+  <div{{ content_attributes }}>
+    {{ content }}
+  </div>
+</article>

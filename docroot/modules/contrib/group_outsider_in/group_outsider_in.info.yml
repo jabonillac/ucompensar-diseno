@@ -1,0 +1,13 @@
+name: Group outsider-in
+type: module
+description: "Also apply the 'advanced outsider permissions' to group members, in addition to basic member permissions, so that an outsider does not lose its rights when it becomes a member"
+package: Group
+core: 8.x
+core_version_requirement: ^8 || ^9
+dependencies:
+  - group:group
+
+# Information added by Drupal.org packaging script on 2021-02-08
+version: '8.x-1.0-beta1'
+project: 'group_outsider_in'
+datestamp: 1612774635

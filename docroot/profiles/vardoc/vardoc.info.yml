@@ -1,0 +1,34 @@
+name: Vardoc
+type: profile
+description: 'Vardoc: Knowledge Base System and Documentation Site'
+core_version_requirement: ^9
+version: 5.0.0-alpha4
+base profile: varbase
+project: vardoc
+distribution:
+  name: Vardoc
+  install:
+    theme: vartheme_claro
+install:
+  - system
+  - action
+  - user
+  - node
+  - block
+  - datetime
+  - help
+  - image
+  - views
+  - file
+  - tracker
+  - aggregator
+  - menu_block
+  - block_content
+  - block_class
+themes:
+  - bootstrap_barrio
+  - vartheme_bs4
+  - vardoc_theme
+  - seven
+  - claro
+  - vartheme_claro

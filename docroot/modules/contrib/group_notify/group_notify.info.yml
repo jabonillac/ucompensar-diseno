@@ -1,0 +1,13 @@
+name: Group Notify
+description: Send notifications/ email to group members when new content is added.
+core: 8.x
+core_version_requirement: ^8 || ^9
+type: module
+package: Group
+dependencies:
+  - group:gnode
+
+# Information added by Drupal.org packaging script on 2020-08-27
+version: '8.x-1.5'
+project: 'group_notify'
+datestamp: 1598496319

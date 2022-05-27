@@ -1,0 +1,19 @@
+name: 'Vardoc Content Collections'
+description: 'Provides Groups managment with default configs for Vardoc.'
+type: module
+core_version_requirement: ^9
+version: 5.0.0-alpha4
+package: Vardoc
+dependencies:
+  - group:group
+install:
+  - group_outsider_in
+  - group_members_extra
+  - group_content_menu
+  - gnode
+  - group_taxonomy
+  - ginvite
+  - grequest
+  - group_notify
+  - rh_group
+  - entitygroupfield

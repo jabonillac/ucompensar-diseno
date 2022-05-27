@@ -1,0 +1,9 @@
+{
+  "name": "drupal/group_outsider_in",
+  "type": "drupal-module",
+  "description": "Also apply the 'advanced outsider permissions' to group members",
+  "license": "GPL-2.0-or-later",
+  "require-dev": {
+    "vijaycs85/drupal-quality-checker": "^1.3"
+  }
+}

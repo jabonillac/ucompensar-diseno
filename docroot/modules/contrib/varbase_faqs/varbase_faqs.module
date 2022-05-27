@@ -1,0 +1,18 @@
+<?php
+
+/**
+ * @file
+ * Contains varbase_faqs.module.
+ */
+
+/**
+ * Implements hook_theme().
+ */
+function varbase_faqs_theme() {
+  return [
+    'faq_hide_answer' => [
+      'template' => 'faq-hide-answer',
+      'variables' => ['data' => NULL],
+    ],
+  ];
+}

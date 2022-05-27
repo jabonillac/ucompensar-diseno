@@ -1,0 +1,50 @@
+<?php
+
+/**
+ * @file
+ * Update and uninstall functions for the group_notify module.
+ */
+
+use Drupal\Core\Config\FileStorage;
+
+/**
+ * Installs configuration into the active storage and injects a UUID.
+ *
+ * @param string $config_name
+ *   The name of the configuration to install.
+ */
+function _group_notify_update_configuration($config_name) {
+  $path = drupal_get_path('module', 'group_notify') . '/config/install';
+  $file = new FileStorage($path);
+
+  \Drupal::service('config.storage')
+    ->write($config_name, $file->read($config_name));
+
+  \Drupal::configFactory()->getEditable($config_name)
+    ->set('uuid', \Drupal::service('uuid')->generate())
+    ->save();
+}
+
+/**
+ * Add configuration for comment display view mode.
+ */
+function group_notify_update_8101(&$sandbox) {
+  _group_notify_update_configuration('core.entity_view_mode.comment.group_notify_email');
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function group_notify_uninstall($is_syncing) {
+  if (!$is_syncing) {
+    $config = \Drupal::configFactory();
+
+    $config
+      ->getEditable('core.entity_view_mode.comment.group_notify_email')
+      ->delete();
+
+    $config
+      ->getEditable('core.entity_view_mode.node.group_notify_email')
+      ->delete();
+  }
+}
